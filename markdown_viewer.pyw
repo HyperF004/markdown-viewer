@@ -1,5 +1,6 @@
 import argparse
 import base64
+import bisect
 import concurrent.futures
 import ctypes
 import ctypes.wintypes
@@ -446,6 +447,7 @@ class MarkdownViewer(tk.Tk):
         self._last_headings = []
         self._embedded_images = {}
         self._link_tag_counter = 0
+        self._search_job = None
         self._pane_sizes_set = False
         self._sidebar_visible = True
         self._sidebar_width = 380
@@ -1247,7 +1249,7 @@ class MarkdownViewer(tk.Tk):
         self.bind("<Control-r>", lambda _event: self.reload_file())
         self.bind("<Control-f>", lambda _event: self.focus_search())
         self.bind("<Control-t>", lambda _event: self.translate_current_scope())
-        self.search_var.trace_add("write", lambda *_args: self.update_search())
+        self.search_var.trace_add("write", lambda *_args: self._schedule_search())
 
     def focus_search(self):
         if self.search_window and self.search_window.winfo_exists():
@@ -1385,6 +1387,9 @@ class MarkdownViewer(tk.Tk):
         headings = self.render_markdown_into(self.preview_text, self.current_markdown)
         self.toc_targets = [index for _level, _title, index in headings]
         self._last_headings = headings
+        if self._search_job:
+            self.after_cancel(self._search_job)
+            self._search_job = None
         self.update_search()
 
     def render_markdown_into(self, text_widget, markdown):
@@ -1587,7 +1592,19 @@ class MarkdownViewer(tk.Tk):
         target = self.toc_targets[index]
         self.preview_text.see(target)
 
+    def _schedule_search(self):
+        """防抖：停止输入 200ms 后才真正搜索，避免每敲一个键扫全文档。"""
+        if self._search_job:
+            self.after_cancel(self._search_job)
+        self._search_job = self.after(200, self.update_search)
+
     def update_search(self):
+        self._search_job = None
+        try:
+            if not self.preview_text.winfo_exists():
+                return
+        except tk.TclError:
+            return
         self.preview_text.configure(state=tk.NORMAL)
         self.preview_text.tag_remove("search", "1.0", tk.END)
         self.preview_text.tag_remove("search_active", "1.0", tk.END)
@@ -1596,15 +1613,23 @@ class MarkdownViewer(tk.Tk):
 
         query = self.search_var.get()
         if query:
-            start = "1.0"
-            while True:
-                index = self.preview_text.search(query, start, tk.END, nocase=True)
-                if not index:
-                    break
-                end = f"{index}+{len(query)}c"
-                self.preview_text.tag_add("search", index, end)
-                self.match_ranges.append((index, end))
-                start = end
+            text = self.preview_text.get("1.0", "end-1c")
+            if text:
+                # 用 Python 正则替代 Tk 逐段 search（快约两个数量级），
+                # 再把字符偏移换算成 "line.char" 索引
+                pattern = re.compile(re.escape(query), re.IGNORECASE)
+                line_starts = []
+                offset = 0
+                for segment in text.split("\n"):
+                    line_starts.append(offset)
+                    offset += len(segment) + 1
+                for match in pattern.finditer(text):
+                    start_offset = match.start()
+                    line_index = bisect.bisect_right(line_starts, start_offset) - 1
+                    start = f"{line_index + 1}.{start_offset - line_starts[line_index]}"
+                    end = f"{start}+{match.end() - start_offset}c"
+                    self.preview_text.tag_add("search", start, end)
+                    self.match_ranges.append((start, end))
 
         self.preview_text.configure(state=tk.DISABLED)
         if self.match_ranges:
