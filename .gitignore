@@ -1,0 +1,15 @@
+# Claude Code 本地配置
+.claude/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# PyInstaller 构建产物
+build/
+dist/
+*.spec
+
+# 二进制产物（发布到 GitHub Releases，不入仓库）
+release/
+installer/app-payload.zip
