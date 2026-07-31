@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-$ProgId = "CUBE18MarkdownViewer.Document"
-$RegisteredAppName = "CUBE18 Markdown Viewer"
+$ProgId = "MarkdownViewer.Document"
+$RegisteredAppName = "Markdown Viewer"
 $Extensions = @(".md", ".markdown", ".mdown", ".mkd")
 
 foreach ($Extension in $Extensions) {
@@ -29,11 +29,11 @@ foreach ($Extension in $Extensions) {
         Remove-ItemProperty -LiteralPath $ExplorerOpenWithPath -Name $ProgId -ErrorAction SilentlyContinue
     }
 
-    Remove-Item -LiteralPath "HKCU:\Software\Classes\SystemFileAssociations\$Extension\shell\CUBE18MarkdownViewer" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath "HKCU:\Software\Classes\SystemFileAssociations\$Extension\shell\MarkdownViewer" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Remove-ItemProperty -LiteralPath "HKCU:\Software\RegisteredApplications" -Name $RegisteredAppName -ErrorAction SilentlyContinue
-Remove-Item -LiteralPath "HKCU:\Software\CUBE18MarkdownViewer" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath "HKCU:\Software\MarkdownViewer" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "HKCU:\Software\Classes\$ProgId" -Recurse -Force -ErrorAction SilentlyContinue
 
 Add-Type -Namespace Win32 -Name ShellNotify -MemberDefinition @"

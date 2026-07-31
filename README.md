@@ -1,4 +1,4 @@
-# CUBE18 Markdown Viewer
+# Markdown Viewer
 
 一个不使用 Electron 的 Windows Markdown 桌面查看器。
 
@@ -31,7 +31,7 @@ API Key 可在“设置 -> DeepSeek API 配置...”中保存到本机，Windows
 安装程序位于：
 
 ```text
-release\CUBE18MarkdownViewerSetup.exe
+release\MarkdownViewerSetup.exe
 ```
 
 双击会打开完整安装向导，包含欢迎页、安装路径选择、安装选项、进度页和完成页。
@@ -39,7 +39,7 @@ release\CUBE18MarkdownViewerSetup.exe
 默认安装到当前用户目录：
 
 ```text
-%LOCALAPPDATA%\Programs\CUBE18 Markdown Viewer
+%LOCALAPPDATA%\Programs\Markdown Viewer
 ```
 
 安装向导中可以更改安装路径，也可以选择是否创建开始菜单快捷方式、桌面快捷方式，以及是否注册 `.md`、`.markdown`、`.mdown`、`.mkd` 的打开方式和右键菜单。安装版不依赖用户本机 Python。
@@ -54,7 +54,7 @@ powershell -ExecutionPolicy Bypass -File ".\register-file-association.ps1"
 
 之后双击 `.md`、`.markdown`、`.mdown`、`.mkd` 文件即可用本查看器打开。
 
-如果 Windows 已经为 Markdown 设置过其他默认应用，双击可能会被系统的 `UserChoice` 保护挡住；脚本同时会加入右键菜单“用 Markdown Viewer 打开”，并把软件加入 Windows 默认应用列表。此时可以在“设置 > 应用 > 默认应用”里选择 `CUBE18 Markdown Viewer`。
+如果 Windows 已经为 Markdown 设置过其他默认应用，双击可能会被系统的 `UserChoice` 保护挡住；脚本同时会加入右键菜单“用 Markdown Viewer 打开”，并把软件加入 Windows 默认应用列表。此时可以在“设置 > 应用 > 默认应用”里选择 `Markdown Viewer`。
 
 ## 取消关联
 
@@ -66,7 +66,7 @@ powershell -ExecutionPolicy Bypass -File ".\unregister-file-association.ps1"
 
 ---
 
-# CUBE18 Markdown Viewer
+# Markdown Viewer
 
 A Windows desktop Markdown viewer built without Electron.
 
@@ -99,7 +99,7 @@ Double-click `launch.cmd`.
 The installer is located at:
 
 ```text
-release\CUBE18MarkdownViewerSetup.exe
+release\MarkdownViewerSetup.exe
 ```
 
 Double-click it to open the full setup wizard, including welcome page, install location selection, install options, progress page, and finish page.
@@ -107,7 +107,7 @@ Double-click it to open the full setup wizard, including welcome page, install l
 The default install location is:
 
 ```text
-%LOCALAPPDATA%\Programs\CUBE18 Markdown Viewer
+%LOCALAPPDATA%\Programs\Markdown Viewer
 ```
 
 The setup wizard lets you change the install path and choose whether to create a Start Menu shortcut, create a desktop shortcut, and register `.md`, `.markdown`, `.mdown`, and `.mkd` file associations and context menu entries. The installed build does not require Python to be installed on the user machine.
@@ -122,7 +122,7 @@ powershell -ExecutionPolicy Bypass -File ".\register-file-association.ps1"
 
 After registration, `.md`, `.markdown`, `.mdown`, and `.mkd` files can be opened with this viewer.
 
-If Windows has already assigned Markdown files to another default app, double-click behavior may still be protected by the system `UserChoice` setting. The script also adds a context menu item named `用 Markdown Viewer 打开` and registers the app in Windows Default Apps. In that case, choose `CUBE18 Markdown Viewer` from `Settings > Apps > Default apps`.
+If Windows has already assigned Markdown files to another default app, double-click behavior may still be protected by the system `UserChoice` setting. The script also adds a context menu item named `用 Markdown Viewer 打开` and registers the app in Windows Default Apps. In that case, choose `Markdown Viewer` from `Settings > Apps > Default apps`.
 
 ## Remove File Association
 

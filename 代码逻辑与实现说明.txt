@@ -1,9 +1,9 @@
-CUBE18 Markdown Viewer 代码逻辑与实现说明
+Markdown Viewer 代码逻辑与实现说明
 生成时间：2026-07-29
 
 一、项目定位
 
-CUBE18 Markdown Viewer 是一个不使用 Electron 的 Windows 本地 Markdown 桌面查看器。
+Markdown Viewer 是一个不使用 Electron 的 Windows 本地 Markdown 桌面查看器。
 主程序使用 Python + Tkinter 实现，目标是提供：
 
 1. Markdown 文件打开、源码查看、预览查看、分屏查看。
@@ -22,7 +22,7 @@ E:\CUBE18\markdown viewer\markdown_viewer.pyw
 E:\CUBE18\markdown viewer\installer\installer_ui.py
 
 最终安装包：
-E:\CUBE18\markdown viewer\release\CUBE18MarkdownViewerSetup.exe
+E:\CUBE18\markdown viewer\release\MarkdownViewerSetup.exe
 
 
 二、主要文件结构
@@ -34,7 +34,7 @@ E:\CUBE18\markdown viewer\release\CUBE18MarkdownViewerSetup.exe
    完整安装向导。使用 Tkinter 编写安装界面，负责解压程序载荷、创建快捷方式、写注册表、写卸载项。
 
 3. installer\app-payload.zip
-   安装器内嵌载荷。由 dist\CUBE18MarkdownViewer 目录压缩生成，包含独立运行版主程序和 Python/Tk 运行时文件。
+   安装器内嵌载荷。由 dist\MarkdownViewer 目录压缩生成，包含独立运行版主程序和 Python/Tk 运行时文件。
 
 4. assets\markdown-viewer.ico
    应用图标，同时用于 exe 图标、窗口图标、文件关联图标。
@@ -45,7 +45,7 @@ E:\CUBE18\markdown viewer\release\CUBE18MarkdownViewerSetup.exe
 6. launch.cmd
    源码版启动脚本，查找 pyw.exe / pythonw.exe / python.exe 运行 markdown_viewer.pyw。
 
-7. release\CUBE18MarkdownViewerSetup.exe
+7. release\MarkdownViewerSetup.exe
    当前发布用安装程序，带完整安装路径和安装选项 UI。
 
 8. 工作日志.txt
@@ -350,7 +350,7 @@ load_settings()
 save_settings()
 
 配置文件路径：
-%APPDATA%\CUBE18MarkdownViewer\settings.json
+%APPDATA%\MarkdownViewer\settings.json
 
 API Key 使用 Windows DPAPI：
 
@@ -405,7 +405,7 @@ POST https://api.deepseek.com/chat/completions
 headers:
 Authorization: Bearer {api_key}
 Content-Type: application/json
-User-Agent: CUBE18MarkdownViewer/1.0
+User-Agent: MarkdownViewer/1.0
 
 payload:
 model: deepseek-v4-flash 或 deepseek-v4-pro
@@ -530,7 +530,7 @@ HKCU:\Software\RegisteredApplications
 HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts
 
 ProgId：
-CUBE18MarkdownViewer.Document
+MarkdownViewer.Document
 
 支持扩展名：
 .md
@@ -539,7 +539,7 @@ CUBE18MarkdownViewer.Document
 .mkd
 
 安装版 open command：
-"{InstallDir}\CUBE18MarkdownViewer.exe" "%1"
+"{InstallDir}\MarkdownViewer.exe" "%1"
 
 同时注册：
 1. 默认打开类型
@@ -561,7 +561,7 @@ installer\installer_ui.py
 Python + Tkinter + PyInstaller onefile。
 
 安装包：
-release\CUBE18MarkdownViewerSetup.exe
+release\MarkdownViewerSetup.exe
 
 安装向导内嵌：
 1. app-payload.zip
@@ -595,7 +595,7 @@ install_app(install_dir, desktop_shortcut, start_menu_shortcut, file_association
 安装流程：
 
 1. stop_running_app()
-   关闭正在运行的 CUBE18MarkdownViewer。
+   关闭正在运行的 MarkdownViewer。
 
 2. safe_clear_install_dir()
    准备安装目录。只有目录中存在安装标记或主程序时才清空，避免误删用户随便选中的普通目录。
@@ -622,7 +622,7 @@ install_app(install_dir, desktop_shortcut, start_menu_shortcut, file_association
 
 静默安装参数：
 
-CUBE18MarkdownViewerSetup.exe --silent
+MarkdownViewerSetup.exe --silent
 
 可选参数：
 --install-dir "路径"
@@ -636,21 +636,21 @@ CUBE18MarkdownViewerSetup.exe --silent
 
 1. 构建主程序独立目录：
 
-python -m PyInstaller --noconfirm --clean --windowed --name CUBE18MarkdownViewer --icon "assets\markdown-viewer.ico" --add-data "assets;assets" "markdown_viewer.pyw"
+python -m PyInstaller --noconfirm --clean --windowed --name MarkdownViewer --icon "assets\markdown-viewer.ico" --add-data "assets;assets" "markdown_viewer.pyw"
 
 输出：
-dist\CUBE18MarkdownViewer\CUBE18MarkdownViewer.exe
+dist\MarkdownViewer\MarkdownViewer.exe
 
 2. 压缩安装载荷：
 
-Compress-Archive -Path "dist\CUBE18MarkdownViewer\*" -DestinationPath "installer\app-payload.zip" -CompressionLevel Optimal -Force
+Compress-Archive -Path "dist\MarkdownViewer\*" -DestinationPath "installer\app-payload.zip" -CompressionLevel Optimal -Force
 
 3. 构建安装向导：
 
-python -m PyInstaller --noconfirm --clean --onefile --windowed --name CUBE18MarkdownViewerSetup --icon "assets\markdown-viewer.ico" --add-data "installer\app-payload.zip;." --add-data "assets\markdown-viewer.ico;." --distpath "release" --workpath "build\setup-ui" "installer\installer_ui.py"
+python -m PyInstaller --noconfirm --clean --onefile --windowed --name MarkdownViewerSetup --icon "assets\markdown-viewer.ico" --add-data "installer\app-payload.zip;." --add-data "assets\markdown-viewer.ico;." --distpath "release" --workpath "build\setup-ui" "installer\installer_ui.py"
 
 输出：
-release\CUBE18MarkdownViewerSetup.exe
+release\MarkdownViewerSetup.exe
 
 4. 当前安装包 SHA256：
 DB0073A0C9676CC0C94640619EDF1C263C63ADE6BA5A067E7FEEF67DF23BF488
@@ -789,7 +789,7 @@ _resizing_layout：
    - 显示翻译栏后 panes = 2
    - 搜索窗口可打开
    - 搜索计数可更新
-4. dist 中 CUBE18MarkdownViewer.exe 可启动并关闭。
-5. release 中 CUBE18MarkdownViewerSetup.exe 静默安装验证通过。
-6. 安装后的 CUBE18MarkdownViewer.exe 可启动并关闭。
-7. 无残留 CUBE18MarkdownViewerSetup.exe 或 CUBE18MarkdownViewer.exe 进程。
+4. dist 中 MarkdownViewer.exe 可启动并关闭。
+5. release 中 MarkdownViewerSetup.exe 静默安装验证通过。
+6. 安装后的 MarkdownViewer.exe 可启动并关闭。
+7. 无残留 MarkdownViewerSetup.exe 或 MarkdownViewer.exe 进程。

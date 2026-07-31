@@ -3,9 +3,9 @@ $ErrorActionPreference = "Stop"
 $AppDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $AppScript = Join-Path $AppDir "markdown_viewer.pyw"
 $IconPath = Join-Path $AppDir "assets\markdown-viewer.ico"
-$ProgId = "CUBE18MarkdownViewer.Document"
-$RegisteredAppName = "CUBE18 Markdown Viewer"
-$CapabilitiesPath = "Software\CUBE18MarkdownViewer\Capabilities"
+$ProgId = "MarkdownViewer.Document"
+$RegisteredAppName = "Markdown Viewer"
+$CapabilitiesPath = "Software\MarkdownViewer\Capabilities"
 $Extensions = @(".md", ".markdown", ".mdown", ".mkd")
 
 function Set-RegistryDefaultValue {
@@ -76,20 +76,20 @@ $IconValue = "`"$IconPath`",0"
 
 Set-RegistryDefaultValue -Path "HKCU:\Software\Classes\$ProgId" -Value "Markdown Viewer Document"
 Set-RegistryStringValue -Path "HKCU:\Software\Classes\$ProgId" -Name "FriendlyTypeName" -Value "Markdown Viewer Document"
-Set-RegistryStringValue -Path "HKCU:\Software\Classes\$ProgId" -Name "AppUserModelID" -Value "CUBE18.MarkdownViewer"
+Set-RegistryStringValue -Path "HKCU:\Software\Classes\$ProgId" -Name "AppUserModelID" -Value "MarkdownViewer"
 Set-RegistryDefaultValue -Path "HKCU:\Software\Classes\$ProgId\DefaultIcon" -Value $IconValue
 Set-RegistryDefaultValue -Path "HKCU:\Software\Classes\$ProgId\shell" -Value "open"
 Set-RegistryDefaultValue -Path "HKCU:\Software\Classes\$ProgId\shell\open" -Value "用 Markdown Viewer 打开"
 Set-RegistryDefaultValue -Path "HKCU:\Software\Classes\$ProgId\shell\open\command" -Value $Command
 Set-RegistryStringValue -Path "HKCU:\Software\Classes\$ProgId\Application" -Name "ApplicationName" -Value $RegisteredAppName
 Set-RegistryStringValue -Path "HKCU:\Software\Classes\$ProgId\Application" -Name "ApplicationIcon" -Value $IconValue
-Set-RegistryStringValue -Path "HKCU:\Software\Classes\$ProgId\Application" -Name "AppUserModelID" -Value "CUBE18.MarkdownViewer"
+Set-RegistryStringValue -Path "HKCU:\Software\Classes\$ProgId\Application" -Name "AppUserModelID" -Value "MarkdownViewer"
 
-Set-RegistryStringValue -Path "HKCU:\Software\CUBE18MarkdownViewer\Capabilities" -Name "ApplicationName" -Value $RegisteredAppName
-Set-RegistryStringValue -Path "HKCU:\Software\CUBE18MarkdownViewer\Capabilities" -Name "ApplicationDescription" -Value "Open and translate Markdown documents."
-Set-RegistryStringValue -Path "HKCU:\Software\CUBE18MarkdownViewer\Capabilities" -Name "ApplicationIcon" -Value $IconValue
+Set-RegistryStringValue -Path "HKCU:\Software\MarkdownViewer\Capabilities" -Name "ApplicationName" -Value $RegisteredAppName
+Set-RegistryStringValue -Path "HKCU:\Software\MarkdownViewer\Capabilities" -Name "ApplicationDescription" -Value "Open and translate Markdown documents."
+Set-RegistryStringValue -Path "HKCU:\Software\MarkdownViewer\Capabilities" -Name "ApplicationIcon" -Value $IconValue
 foreach ($Extension in $Extensions) {
-    Set-RegistryStringValue -Path "HKCU:\Software\CUBE18MarkdownViewer\Capabilities\FileAssociations" -Name $Extension -Value $ProgId
+    Set-RegistryStringValue -Path "HKCU:\Software\MarkdownViewer\Capabilities\FileAssociations" -Name $Extension -Value $ProgId
 }
 Set-RegistryStringValue -Path "HKCU:\Software\RegisteredApplications" -Name $RegisteredAppName -Value $CapabilitiesPath
 
@@ -100,7 +100,7 @@ foreach ($Extension in $Extensions) {
     Set-RegistryBinaryValue -Path "HKCU:\Software\Classes\$Extension\OpenWithProgids" -Name $ProgId
     Set-RegistryBinaryValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$Extension\OpenWithProgids" -Name $ProgId
 
-    $ContextMenuPath = "HKCU:\Software\Classes\SystemFileAssociations\$Extension\shell\CUBE18MarkdownViewer"
+    $ContextMenuPath = "HKCU:\Software\Classes\SystemFileAssociations\$Extension\shell\MarkdownViewer"
     Set-RegistryDefaultValue -Path $ContextMenuPath -Value "用 Markdown Viewer 打开"
     Set-RegistryStringValue -Path $ContextMenuPath -Name "Icon" -Value $IconValue
     Set-RegistryDefaultValue -Path "$ContextMenuPath\command" -Value $Command

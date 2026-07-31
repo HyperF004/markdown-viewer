@@ -4,7 +4,7 @@ $AppDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $AppScript = Join-Path $AppDir "markdown_viewer.pyw"
 $IconPath = Join-Path $AppDir "assets\markdown-viewer.ico"
 $LocalShortcut = Join-Path $AppDir "Markdown Viewer.lnk"
-$StartMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\CUBE18"
+$StartMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Markdown Viewer"
 $StartMenuShortcut = Join-Path $StartMenuDir "Markdown Viewer.lnk"
 
 function Resolve-PythonWindowedLauncher {
@@ -37,7 +37,7 @@ foreach ($ShortcutPath in $LocalShortcut, $StartMenuShortcut) {
     $Shortcut.Arguments = "`"$AppScript`""
     $Shortcut.WorkingDirectory = $AppDir
     $Shortcut.IconLocation = "$IconPath,0"
-    $Shortcut.Description = "CUBE18 Markdown Viewer"
+    $Shortcut.Description = "Markdown Viewer"
     $Shortcut.Save()
 
     Write-Host "Created shortcut: $ShortcutPath"

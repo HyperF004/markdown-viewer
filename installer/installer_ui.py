@@ -14,13 +14,13 @@ from tkinter import filedialog, messagebox, ttk
 import tkinter as tk
 
 
-APP_NAME = "CUBE18 Markdown Viewer"
-APP_EXE = "CUBE18MarkdownViewer.exe"
-APP_ID = "CUBE18.MarkdownViewer"
-PROG_ID = "CUBE18MarkdownViewer.Document"
-PUBLISHER = "CUBE18"
+APP_NAME = "Markdown Viewer"
+APP_EXE = "MarkdownViewer.exe"
+APP_ID = "MarkdownViewer"
+PROG_ID = "MarkdownViewer.Document"
+PUBLISHER = "HyperF004"
 VERSION = "1.0.0"
-MARKER_FILE = ".cube18-markdown-viewer-install"
+MARKER_FILE = ".markdown-viewer-install"
 EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
 
 COLORS = {
@@ -47,7 +47,7 @@ def default_install_dir():
 
 
 def start_menu_shortcut_path():
-    return Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "CUBE18" / f"{APP_NAME}.lnk"
+    return Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Markdown Viewer" / f"{APP_NAME}.lnk"
 
 
 def desktop_shortcut_path():
@@ -129,7 +129,7 @@ $Shortcut.Save()
 
 
 def stop_running_app():
-    script = "Get-Process -Name 'CUBE18MarkdownViewer' -ErrorAction SilentlyContinue | Stop-Process -Force"
+    script = "Get-Process -Name 'MarkdownViewer' -ErrorAction SilentlyContinue | Stop-Process -Force"
     run_powershell(script)
 
 
@@ -158,17 +158,17 @@ def safe_clear_install_dir(install_dir):
 def write_uninstall_script(install_dir):
     script = r'''
 $ErrorActionPreference = "SilentlyContinue"
-$AppName = "CUBE18 Markdown Viewer"
-$ProgId = "CUBE18MarkdownViewer.Document"
+$AppName = "Markdown Viewer"
+$ProgId = "MarkdownViewer.Document"
 $Extensions = @(".md", ".markdown", ".mdown", ".mkd")
 $InstallDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$StartMenuShortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\CUBE18\CUBE18 Markdown Viewer.lnk"
-$DesktopShortcut = Join-Path ([Environment]::GetFolderPath("DesktopDirectory")) "CUBE18 Markdown Viewer.lnk"
+$StartMenuShortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Markdown Viewer\Markdown Viewer.lnk"
+$DesktopShortcut = Join-Path ([Environment]::GetFolderPath("DesktopDirectory")) "Markdown Viewer.lnk"
 
 Remove-Item -Path $StartMenuShortcut -Force
 Remove-Item -Path $DesktopShortcut -Force
 Remove-Item -Path "HKCU:\Software\Classes\$ProgId" -Recurse -Force
-Remove-Item -Path "HKCU:\Software\CUBE18MarkdownViewer" -Recurse -Force
+Remove-Item -Path "HKCU:\Software\MarkdownViewer" -Recurse -Force
 Remove-ItemProperty -Path "HKCU:\Software\RegisteredApplications" -Name $AppName -Force
 
 foreach ($Extension in $Extensions) {
@@ -179,10 +179,10 @@ foreach ($Extension in $Extensions) {
     }
     Remove-ItemProperty -Path "$ExtPath\OpenWithProgids" -Name $ProgId -Force
     Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$Extension\OpenWithProgids" -Name $ProgId -Force
-    Remove-Item -Path "HKCU:\Software\Classes\SystemFileAssociations\$Extension\shell\CUBE18MarkdownViewer" -Recurse -Force
+    Remove-Item -Path "HKCU:\Software\Classes\SystemFileAssociations\$Extension\shell\MarkdownViewer" -Recurse -Force
 }
 
-Remove-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\CUBE18MarkdownViewer" -Recurse -Force
+Remove-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\MarkdownViewer" -Recurse -Force
 
 Add-Type -Namespace Win32 -Name ShellNotify -MemberDefinition @"
 [System.Runtime.InteropServices.DllImport("shell32.dll")]
@@ -199,7 +199,7 @@ def register_file_associations(install_dir):
     exe_path = Path(install_dir) / APP_EXE
     icon_value = f'"{exe_path}",0'
     open_command = f'"{exe_path}" "%1"'
-    capabilities_path = r"Software\CUBE18MarkdownViewer\Capabilities"
+    capabilities_path = r"Software\MarkdownViewer\Capabilities"
 
     set_reg_default(rf"Software\Classes\{PROG_ID}", "Markdown Viewer Document")
     set_reg_string(rf"Software\Classes\{PROG_ID}", "FriendlyTypeName", "Markdown Viewer Document")
@@ -212,11 +212,11 @@ def register_file_associations(install_dir):
     set_reg_string(rf"Software\Classes\{PROG_ID}\Application", "ApplicationIcon", icon_value)
     set_reg_string(rf"Software\Classes\{PROG_ID}\Application", "AppUserModelID", APP_ID)
 
-    set_reg_string(r"Software\CUBE18MarkdownViewer\Capabilities", "ApplicationName", APP_NAME)
-    set_reg_string(r"Software\CUBE18MarkdownViewer\Capabilities", "ApplicationDescription", "Open and translate Markdown documents.")
-    set_reg_string(r"Software\CUBE18MarkdownViewer\Capabilities", "ApplicationIcon", icon_value)
+    set_reg_string(r"Software\MarkdownViewer\Capabilities", "ApplicationName", APP_NAME)
+    set_reg_string(r"Software\MarkdownViewer\Capabilities", "ApplicationDescription", "Open and translate Markdown documents.")
+    set_reg_string(r"Software\MarkdownViewer\Capabilities", "ApplicationIcon", icon_value)
     for ext in EXTENSIONS:
-        set_reg_string(r"Software\CUBE18MarkdownViewer\Capabilities\FileAssociations", ext, PROG_ID)
+        set_reg_string(r"Software\MarkdownViewer\Capabilities\FileAssociations", ext, PROG_ID)
     set_reg_string(r"Software\RegisteredApplications", APP_NAME, capabilities_path)
 
     for ext in EXTENSIONS:
@@ -226,7 +226,7 @@ def register_file_associations(install_dir):
         set_reg_binary(rf"Software\Classes\{ext}\OpenWithProgids", PROG_ID)
         set_reg_binary(rf"Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\{ext}\OpenWithProgids", PROG_ID)
 
-        menu_path = rf"Software\Classes\SystemFileAssociations\{ext}\shell\CUBE18MarkdownViewer"
+        menu_path = rf"Software\Classes\SystemFileAssociations\{ext}\shell\MarkdownViewer"
         set_reg_default(menu_path, "用 Markdown Viewer 打开")
         set_reg_string(menu_path, "Icon", icon_value)
         set_reg_default(rf"{menu_path}\command", open_command)
@@ -238,7 +238,7 @@ def register_uninstall(install_dir):
     install_dir = Path(install_dir)
     exe_path = install_dir / APP_EXE
     size_kb = sum(p.stat().st_size for p in install_dir.rglob("*") if p.is_file()) // 1024
-    key = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\CUBE18MarkdownViewer"
+    key = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\MarkdownViewer"
     set_reg_string(key, "DisplayName", APP_NAME)
     set_reg_string(key, "DisplayVersion", VERSION)
     set_reg_string(key, "Publisher", PUBLISHER)
@@ -270,7 +270,7 @@ def install_app(install_dir, desktop_shortcut=True, start_menu_shortcut=True, fi
     install_dir.mkdir(parents=True, exist_ok=True)
 
     report(25, "正在解压程序文件...")
-    with tempfile.TemporaryDirectory(prefix="CUBE18MarkdownViewerInstall-") as temp:
+    with tempfile.TemporaryDirectory(prefix="MarkdownViewerInstall-") as temp:
         with zipfile.ZipFile(payload, "r") as archive:
             names = archive.namelist()
             total = max(1, len(names))
@@ -376,7 +376,7 @@ class Installer(tk.Tk):
         side.grid(row=0, column=0, sticky="nsew")
         side.configure(width=230)
         side.grid_propagate(False)
-        ttk.Label(side, text="CUBE18", style="SideTitle.TLabel").pack(anchor="w")
+        ttk.Label(side, text="Markdown Viewer", style="SideTitle.TLabel").pack(anchor="w")
         ttk.Label(side, text="Markdown Viewer", style="SideTitle.TLabel").pack(anchor="w", pady=(0, 22))
         ttk.Label(side, text="本地 Markdown 查看\nDeepSeek 翻译\n右侧译文栏\n文件关联", style="SideMuted.TLabel", justify=tk.LEFT).pack(anchor="w")
 
@@ -422,7 +422,7 @@ class Installer(tk.Tk):
         ttk.Label(frame, text="欢迎使用安装向导", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             frame,
-            text="该向导将安装 CUBE18 Markdown Viewer，并配置快捷方式和 Markdown 文件打开方式。",
+            text="该向导将安装 Markdown Viewer，并配置快捷方式和 Markdown 文件打开方式。",
             style="Body.TLabel",
             wraplength=430,
         ).pack(anchor="w", pady=(18, 0))

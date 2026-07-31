@@ -15,12 +15,14 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 
-APP_NAME = "CUBE18 Markdown Viewer"
-APP_ID = "CUBE18.MarkdownViewer"
+APP_NAME = "Markdown Viewer"
+APP_ID = "MarkdownViewer"
 APP_DIR = Path(__file__).resolve().parent
 ICON_PATH = APP_DIR / "assets" / "markdown-viewer.ico"
-CONFIG_DIR = Path(os.environ.get("APPDATA", str(APP_DIR))) / "CUBE18MarkdownViewer"
+CONFIG_DIR = Path(os.environ.get("APPDATA", str(APP_DIR))) / "MarkdownViewer"
 CONFIG_PATH = CONFIG_DIR / "settings.json"
+# 旧版配置目录（曾带 CUBE18 前缀），仅首次启动时用于迁移
+LEGACY_CONFIG_PATH = Path(os.environ.get("APPDATA", str(APP_DIR))) / "CUBE18MarkdownViewer" / "settings.json"
 COLORS = {
     "app_bg": "#F6F8FA",
     "sidebar_bg": "#F0F2F5",
@@ -76,6 +78,13 @@ TRANSLATION_QUALITY_MODES = {
         "system": "You are a professional translation engine. Translate with high fidelity, preserve terminology, tone, formatting, and Markdown structure. Return only the translated text.",
     },
 }
+
+# 整行图片 ![](path)
+IMAGE_LINE_PATTERN = re.compile(r"^!\[([^\]]*)\]\(([^)\n]+)\)\s*$")
+# 行内标记：代码/加粗/斜体/链接
+INLINE_LINK_PATTERN = re.compile(r"(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|\[[^\]\n]+]\([^)\n]+\))")
+# 裸 URL 自动识别
+BARE_URL_PATTERN = re.compile(r"https?://[^\s<>()\[\]\"']+")
 
 
 class DATA_BLOB(ctypes.Structure):
@@ -434,7 +443,9 @@ class MarkdownViewer(tk.Tk):
         self.match_ranges = []
         self.active_match = -1
         self.toc_targets = []
-        self._source_update_job = None
+        self._last_headings = []
+        self._embedded_images = {}
+        self._link_tag_counter = 0
         self._pane_sizes_set = False
         self._sidebar_visible = True
         self._sidebar_width = 380
@@ -504,10 +515,13 @@ class MarkdownViewer(tk.Tk):
         style.configure("Success.Horizontal.TProgressbar", troughcolor="#DCFCE7", bordercolor=COLORS["border"], background=COLORS["success"], lightcolor=COLORS["success"], darkcolor=COLORS["success"])
 
     def load_settings(self):
-        if not CONFIG_PATH.exists():
+        path = CONFIG_PATH
+        if not path.exists() and LEGACY_CONFIG_PATH.exists():
+            path = LEGACY_CONFIG_PATH
+        if not path.exists():
             return
         try:
-            data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return
         self.target_language_var.set(data.get("target_language", self.target_language_var.get()))
@@ -619,7 +633,6 @@ class MarkdownViewer(tk.Tk):
         self.source_text = tk.Text(
             self.source_frame,
             wrap=tk.NONE,
-            undo=True,
             borderwidth=1,
             relief=tk.SOLID,
             padx=14,
@@ -638,10 +651,11 @@ class MarkdownViewer(tk.Tk):
         source_x.grid(row=1, column=0, sticky="ew")
         self.source_frame.columnconfigure(0, weight=1)
         self.source_frame.rowconfigure(0, weight=1)
-        self.source_text.bind("<<Modified>>", self.on_source_modified)
         self.source_text.bind("<MouseWheel>", lambda event: self.on_text_mousewheel(event, self.source_text, "translation"))
         self.source_text.bind("<Motion>", lambda event: self.on_text_motion(event, self.source_scrollbar))
         self.source_text.bind("<Leave>", lambda event: self.on_text_leave(event, self.source_scrollbar))
+        # 纯预览器：源码区只读，程序内部写入时临时切回 NORMAL
+        self.source_text.configure(state=tk.DISABLED)
 
         self.preview_text = tk.Text(
             self.preview_frame,
@@ -1050,7 +1064,15 @@ class MarkdownViewer(tk.Tk):
         self.save_settings()
         if hasattr(self, "settings_saved_label"):
             self.settings_saved_label.configure(text="✔ 已保存")
-            self.after(1500, lambda: self.settings_saved_label.configure(text="") if hasattr(self, "settings_saved_label") else None)
+            self.after(1500, self.clear_settings_saved_label)
+
+    def clear_settings_saved_label(self):
+        if not hasattr(self, "settings_saved_label"):
+            return
+        try:
+            self.settings_saved_label.configure(text="")
+        except tk.TclError:
+            pass  # 设置窗口已关闭，标签已销毁
 
     def open_translation_options_dialog(self):
         if hasattr(self, "translation_options_window") and self.translation_options_window.winfo_exists():
@@ -1301,17 +1323,19 @@ class MarkdownViewer(tk.Tk):
     def load_markdown(self, markdown, path):
         self.current_file = path
         self.current_markdown = markdown
+        self.source_text.configure(state=tk.NORMAL)
         self.source_text.delete("1.0", tk.END)
         self.source_text.insert("1.0", markdown)
-        self.source_text.edit_modified(False)
+        self.source_text.configure(state=tk.DISABLED)
         self.render_preview()
         self.update_header()
 
     def show_welcome(self):
         self.current_file = None
         self.current_markdown = ""
+        self.source_text.configure(state=tk.NORMAL)
         self.source_text.delete("1.0", tk.END)
-        self.source_text.edit_modified(False)
+        self.source_text.configure(state=tk.DISABLED)
         self.toc_targets = []
         self.file_info_var.set("未打开文件")
         self.status.configure(text="提示：点击“打开文件”，或先运行注册脚本后双击 .md 文件。")
@@ -1357,28 +1381,16 @@ class MarkdownViewer(tk.Tk):
         else:
             self.content.add(self.preview_frame, weight=1)
 
-    def on_source_modified(self, _event):
-        if not self.source_text.edit_modified():
-            return
-        self.source_text.edit_modified(False)
-        if self._source_update_job:
-            self.after_cancel(self._source_update_job)
-        self._source_update_job = self.after(350, self.sync_source_to_preview)
-
-    def sync_source_to_preview(self):
-        self.current_markdown = self.source_text.get("1.0", "end-1c")
-        self.current_file = self.current_file
-        self.render_preview()
-        self.status.configure(text="预览已根据源码内容更新")
-
     def render_preview(self):
         headings = self.render_markdown_into(self.preview_text, self.current_markdown)
         self.toc_targets = [index for _level, _title, index in headings]
+        self._last_headings = headings
         self.update_search()
 
     def render_markdown_into(self, text_widget, markdown):
         text_widget.configure(state=tk.NORMAL)
         text_widget.delete("1.0", tk.END)
+        self._embedded_images.setdefault(text_widget, []).clear()
 
         lines = markdown.replace("\r\n", "\n").split("\n")
         in_code = False
@@ -1404,6 +1416,11 @@ class MarkdownViewer(tk.Tk):
 
             if not stripped:
                 self._insert_plain(text_widget, "\n", ("body",))
+                continue
+
+            image_match = IMAGE_LINE_PATTERN.match(stripped)
+            if image_match:
+                self._insert_image_line(text_widget, image_match.group(1), image_match.group(2))
                 continue
 
             heading = re.match(r"^(#{1,6})\s+(.+?)\s*#*$", stripped)
@@ -1445,11 +1462,10 @@ class MarkdownViewer(tk.Tk):
         text_widget.insert(tk.END, value, tags)
 
     def _insert_inline(self, text_widget, value, base_tags=()):
-        pattern = re.compile(r"(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)")
         position = 0
-        for match in pattern.finditer(value):
+        for match in INLINE_LINK_PATTERN.finditer(value):
             if match.start() > position:
-                text_widget.insert(tk.END, value[position : match.start()], base_tags)
+                self._insert_plain_with_links(text_widget, value[position : match.start()], base_tags)
             token = match.group(0)
             tags = base_tags
             text = token
@@ -1462,10 +1478,102 @@ class MarkdownViewer(tk.Tk):
             elif token.startswith(("*", "_")):
                 text = token[1:-1]
                 tags = base_tags + ("italic",)
+            elif token.startswith("["):
+                text, url = self._parse_inline_link(token)
+                tags = base_tags + (self._create_link_tag(text_widget, url),)
             text_widget.insert(tk.END, text, tags)
             position = match.end()
         if position < len(value):
+            self._insert_plain_with_links(text_widget, value[position:], base_tags)
+
+    def _insert_plain_with_links(self, text_widget, value, base_tags):
+        """插入纯文本片段，并把裸 http(s) 链接变成可点击链接。"""
+        position = 0
+        for match in BARE_URL_PATTERN.finditer(value):
+            if match.start() > position:
+                text_widget.insert(tk.END, value[position : match.start()], base_tags)
+            url = match.group(0).rstrip(".,;!?，。；！？")
+            text_widget.insert(tk.END, url, base_tags + (self._create_link_tag(text_widget, url),))
+            position = match.end()
+        if position < len(value):
             text_widget.insert(tk.END, value[position:], base_tags)
+
+    def _parse_inline_link(self, token):
+        close = token.find("]")
+        text = token[1:close]
+        url = token[close + 2 : -1].strip()
+        if re.search(r"\s", url):
+            url = re.split(r"\s+", url, maxsplit=1)[0]
+        return text, url
+
+    def _create_link_tag(self, text_widget, url):
+        self._link_tag_counter += 1
+        tag = f"link_{self._link_tag_counter}"
+        text_widget.tag_configure(tag, foreground=COLORS["brand"], underline=True)
+        text_widget.tag_bind(tag, "<Button-1>", lambda _event, u=url: self._open_markdown_link(u))
+        text_widget.tag_bind(tag, "<Enter>", lambda _event: text_widget.configure(cursor="hand2"))
+        text_widget.tag_bind(tag, "<Leave>", lambda _event: text_widget.configure(cursor=""))
+        return tag
+
+    def _open_markdown_link(self, url):
+        url = url.strip()
+        if not url:
+            return
+        if url.startswith("#"):
+            self._jump_to_anchor(url[1:])
+            return
+        if "://" not in url and not url.lower().startswith(("mailto:", "tel:")):
+            path = self._resolve_local_path(url)
+            if path is not None:
+                self.open_path(path)
+                return
+        try:
+            os.startfile(url)
+        except OSError as exc:
+            messagebox.showerror(APP_NAME, f"无法打开链接：\n{url}\n\n{exc}")
+
+    def _jump_to_anchor(self, anchor):
+        wanted = re.sub(r"[^a-zA-Z0-9一-鿿]+", "", anchor.lower())
+        for _level, title, index in self._last_headings:
+            candidate = re.sub(r"[^a-zA-Z0-9一-鿿]+", "", title.lower())
+            if candidate == wanted:
+                self.preview_text.see(index)
+                break
+
+    def _resolve_local_path(self, src):
+        src = src.strip().strip('<>"')
+        if not src or "://" in src or src.lower().startswith(("data:", "mailto:", "tel:")):
+            return None
+        base = self.current_file.parent if self.current_file else APP_DIR
+        path = Path(src)
+        if not path.is_absolute():
+            path = base / path
+        return path if path.exists() else None
+
+    def _load_embedded_image(self, src):
+        """加载本地图片为 tk.PhotoImage（PNG/GIF 等 Tk 原生格式），超出最大尺寸按整数倍缩小；失败返回 None。"""
+        path = self._resolve_local_path(src)
+        if path is None:
+            return None
+        try:
+            photo = tk.PhotoImage(file=str(path))
+        except (tk.TclError, OSError):
+            return None
+        max_width, max_height = 600, 480
+        width, height = photo.width(), photo.height()
+        factor = max((width + max_width - 1) // max_width, (height + max_height - 1) // max_height)
+        if factor > 1:
+            photo = photo.subsample(factor, factor)
+        return photo
+
+    def _insert_image_line(self, text_widget, alt, src):
+        photo = self._load_embedded_image(src)
+        if photo is not None:
+            self._embedded_images.setdefault(text_widget, []).append(photo)
+            text_widget.image_create(tk.END, image=photo)
+            self._insert_plain(text_widget, "\n", ("body",))
+        else:
+            self._insert_inline(text_widget, f"🖼 {alt or '图片'}\n", ("quote",))
 
     def jump_to_heading(self, _event):
         if not hasattr(self, "toc_list"):
@@ -1623,26 +1731,63 @@ class MarkdownViewer(tk.Tk):
         return "".join(translated_chunks).strip()
 
     def split_translation_chunks(self, text, limit=5000):
+        """按 Markdown 结构边界分块：段落/标题/列表/引用整块切，代码围栏整块保留。
+
+        只有单个块超过上限（如超长代码块）才按行硬拆，避免常见文档的
+        段落、表格、代码块被拦腰截断导致译文结构损坏。
+        """
+        blocks = self._split_markdown_blocks(text)
         chunks = []
         current = ""
-        for part in re.split(r"(\n+)", text):
-            if not part:
+        for block in blocks:
+            if len(current) + len(block) <= limit:
+                current += block
                 continue
-            if len(part) > limit:
-                if current:
-                    chunks.append(current)
-                    current = ""
-                for index in range(0, len(part), limit):
-                    chunks.append(part[index : index + limit])
-                continue
-            if len(current) + len(part) > limit:
+            if current:
                 chunks.append(current)
-                current = part
-            else:
-                current += part
+                current = ""
+            if len(block) <= limit:
+                current = block
+                continue
+            # 单块超限：按行拆，行保持完整
+            piece = ""
+            for line in block.split("\n"):
+                if len(piece) + len(line) + 1 > limit and piece:
+                    chunks.append(piece)
+                    piece = ""
+                piece += line + "\n"
+            if piece:
+                chunks.append(piece)
         if current:
             chunks.append(current)
         return chunks or [text]
+
+    def _split_markdown_blocks(self, text):
+        """把 Markdown 切成结构块：代码围栏整块保留，其余按空行分段。"""
+        blocks = []
+        current = []
+        in_fence = False
+        for raw_line in text.split("\n"):
+            stripped = raw_line.strip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                current.append(raw_line)
+                if not in_fence:
+                    blocks.append("\n".join(current) + "\n")
+                    current = []
+                continue
+            if in_fence:
+                current.append(raw_line)
+                continue
+            if not stripped:
+                if current:
+                    blocks.append("\n".join(current) + "\n\n")
+                    current = []
+                continue
+            current.append(raw_line)
+        if current:
+            blocks.append("\n".join(current) + "\n")
+        return blocks
 
     def translate_chunk(self, text, target_language, target_label, api_key, model, quality):
         mode = TRANSLATION_QUALITY_MODES.get(quality, TRANSLATION_QUALITY_MODES["快速翻译"])
@@ -1672,7 +1817,7 @@ class MarkdownViewer(tk.Tk):
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
-                "User-Agent": "CUBE18MarkdownViewer/1.0",
+                "User-Agent": "MarkdownViewer/1.0",
             },
             method="POST",
         )
@@ -1778,7 +1923,7 @@ class MarkdownViewer(tk.Tk):
         )
 
     def show_about(self):
-        messagebox.showinfo(APP_NAME, "CUBE18 Markdown Viewer\n本地 Markdown 文本查看器。")
+        messagebox.showinfo(APP_NAME, f"{APP_NAME}\n本地 Markdown 文本查看器。")
 
 
 def parse_args():
