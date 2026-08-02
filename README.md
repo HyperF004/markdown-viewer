@@ -1,159 +1,113 @@
-# Markdown Viewer
+# Markdown Viewer Qt Preview
 
-一个不使用 Electron 的 Windows Markdown 桌面查看器，内置 DeepSeek 双语翻译。
+一个基于 Qt（PySide6）的 Windows Markdown 桌面查看器，内置 DeepSeek 双语翻译（预览版）。
 
-## 界面预览
+## 当前状态
 
-![预览与翻译](docs/screenshots/preview.png)
+这是 Tkinter 版向 Qt 迁移的 **Preview 版本**：原生 Qt `QSplitter` 布局，解决了旧 Tk 版 `ttk.PanedWindow` 在 Windows 上实时拖拽侧栏时的控件撕裂问题。
 
-![分屏模式](docs/screenshots/split.png)
+**已实现：**
 
-## 亮点
+- Markdown 文件打开与 HTML 预览
+- DeepSeek API 配置（API Key 存于 `%APPDATA%\MarkdownViewer\settings.json`，Windows DPAPI 加密保护）
+- 选中 / 全文翻译，翻译进度反馈
+- 译文按 Markdown 样式渲染
+- 原文 / 译文滚动联动
+- 右侧译文栏显示 / 隐藏
 
-- 纯 Python 标准库 + Tkinter，无 Electron——安装包仅 ~23 MB，启动即开
-- 内置 DeepSeek 翻译：选中/全文、快速/精翻，译文与原文双向滚动同步
-- 现代自绘界面：胶囊按钮、iOS 风格开关、渐变翻译按钮、悬浮滚动条
-- 只读预览器定位：源码视图不可误改，专注阅读
+**Preview 阶段尚未迁移（计划中）：**
 
-## 功能
+- 目标语言选择
+- 搜索与文档目录
+- 源码 / 预览 / 分屏切换
+- 完整的图片与链接渲染
+- 翻译分段并发与更精细的滚动对齐
+- 右键菜单、文件关联与卸载逻辑
 
-- Markdown 预览、源码、分屏
-- 文档目录与搜索
-- DeepSeek API 翻译：设置菜单中配置 API Key、模型选择、固定 Base URL
-- 右侧现代译文栏：选中/全文、快速/精翻、跟随滚动、翻译进度、译文结果
-- 蓝白灰现代主题、自绘胶囊按钮、iOS 风格开关、渐变翻译按钮
-- 译文结果按 Markdown 样式渲染，并支持原文/译文双向滚动同步
-- 半透明浮动滚动条：靠近或滚动时显示，平时隐藏
-- 当前用户注册表文件关联
-- 自定义应用图标和 Markdown 文件图标
+## 运行
 
-常用操作已收进菜单栏：文件打开/示例文档在“文件”菜单，预览/源码/分屏和搜索在“视图”菜单，翻译相关操作在“工具”菜单和右侧译文栏。
+双击 `launch-qt.cmd`，或直接用 Python 运行 `markdown_viewer_qt.pyw`。
 
-翻译功能使用 `https://api.deepseek.com/chat/completions`。只有点击翻译按钮后，软件才会发送待翻译文本；选中翻译不会在侧边栏重复展示原文。
+依赖：PySide6 6.11.1、Markdown 3.10.3。
 
-模型选项为 `deepseek-v4-flash` 和 `deepseek-v4-pro`。快速翻译使用 `thinking=false`，精翻使用 `thinking=true`，两种翻译模式独立于模型下拉框。
-
-API Key 可在“设置 -> DeepSeek API 配置...”中保存到本机，Windows 下使用 DPAPI 加密保护。
-
-## 启动
-
-双击 `launch.cmd`。
-
-## 安装版
-
-安装程序位于：
+## 安装包（Preview）
 
 ```text
-release\MarkdownViewerSetup.exe
+release-qt\MarkdownViewerQtPreviewSetup.exe
 ```
 
-双击会打开完整安装向导，包含欢迎页、安装路径选择、安装选项、进度页和完成页。
+SHA-256：`7BB8E550EB48E0F8B2418273DAA07FDBB1F3C5D9A72EDCC4290654CE71FFB64B`
 
-默认安装到当前用户目录：
+Qt Preview 安装器使用独立的 App ID / ProgID，可与旧 Tk 版并存安装，互不覆盖。
 
-```text
-%LOCALAPPDATA%\Programs\Markdown Viewer
-```
+## 项目结构
 
-安装向导中可以更改安装路径，也可以选择是否创建开始菜单快捷方式、桌面快捷方式，以及是否注册 `.md`、`.markdown`、`.mdown`、`.mkd` 的打开方式和右键菜单。安装版不依赖用户本机 Python。
+- `markdown_viewer_qt.pyw` — Qt 应用主程序
+- `installer\installer_ui_qt.py` — Qt Preview 安装向导
+- `dist-qt` — 打包后的 Qt 应用目录
+- `release-qt` — 最终安装程序输出目录
+- `Qt版本交接说明.txt` — 迁移交接说明
 
-## 关联 Markdown 文件
+旧 Tkinter 实现已移至同级目录 `E:\CUBE18\markdown viewer-tk-legacy`（含 Tk 源码、旧安装器、注册表关联脚本、构建产物），已归档不再维护。
 
-在 PowerShell 中运行：
+## 路线图
 
-```powershell
-powershell -ExecutionPolicy Bypass -File ".\register-file-association.ps1"
-```
-
-之后双击 `.md`、`.markdown`、`.mdown`、`.mkd` 文件即可用本查看器打开。
-
-如果 Windows 已经为 Markdown 设置过其他默认应用，双击可能会被系统的 `UserChoice` 保护挡住；脚本同时会加入右键菜单“用 Markdown Viewer 打开”，并把软件加入 Windows 默认应用列表。此时可以在“设置 > 应用 > 默认应用”里选择 `Markdown Viewer`。
-
-## 取消关联
-
-```powershell
-powershell -ExecutionPolicy Bypass -File ".\unregister-file-association.ps1"
-```
-
-注册表写入位置为当前用户的 `HKCU:\Software\Classes`，不需要管理员权限。
+Qt Preview 功能补齐后，将替换 Tk 版成为正式的 Markdown Viewer，并重建主安装包。
 
 ---
 
-# Markdown Viewer
+# Markdown Viewer Qt Preview
 
-A Windows desktop Markdown viewer built without Electron, with built-in DeepSeek bilingual translation.
+A Qt (PySide6) based Windows Markdown viewer with built-in DeepSeek bilingual translation (preview release).
 
-## Screenshots
+## Status
 
-![Preview with translation](docs/screenshots/preview.png)
+This is the **preview release** of the Qt migration from the former Tkinter edition. It uses the native Qt `QSplitter` layout, fixing the widget tearing issue of the old Tk `ttk.PanedWindow` when resizing the sidebar live on Windows.
 
-![Split view](docs/screenshots/split.png)
+**Implemented:**
 
-## Highlights
+- Markdown file opening with HTML preview
+- DeepSeek API configuration (API Key stored in `%APPDATA%\MarkdownViewer\settings.json`, protected with Windows DPAPI)
+- Selection / full-document translation with progress feedback
+- Translation result rendered as Markdown
+- Bidirectional scroll sync between original and translation
+- Show / hide the right-side translation panel
 
-- Pure Python stdlib + Tkinter, no Electron — the installer is only ~23 MB
-- Built-in DeepSeek translation: selection / full document, fast / refined modes, with bidirectional scroll sync between original and translation
-- Modern self-drawn UI: pill buttons, iOS-style switches, gradient translate button, overlay scrollbars
-- Read-only previewer: the source view cannot be accidentally edited, focus on reading
+**Not yet migrated (planned):**
 
-## Features
+- Target language selection
+- Search and document TOC
+- Source / preview / split view switching
+- Full image and link rendering
+- Chunked concurrent translation with finer scroll alignment
+- Context menus, file association, and uninstall logic
 
-- Markdown preview, source view, and split view
-- Document search
-- DeepSeek API translation: configure API Key, model, and fixed Base URL from the Settings menu
-- Modern right-side translation panel: selection/full-document translation, fast/refined modes, follow-scroll, progress feedback, and rendered translation result
-- Modern blue/white/gray UI theme with custom pill buttons, iOS-style switches, and gradient translate button
-- Translation results are rendered with Markdown styling and support bidirectional scroll sync with the original document
-- Semi-transparent floating scrollbars that appear only when hovering near the scroll area or scrolling
-- Per-user Windows file association
-- Custom app icon and Markdown file icon
+## Run
 
-Common actions are available from the menu bar: file open/sample document in the File menu, preview/source/split view and search in the View menu, and translation actions in the Tools menu and right-side translation panel.
+Double-click `launch-qt.cmd`, or run `markdown_viewer_qt.pyw` with Python.
 
-Translation uses `https://api.deepseek.com/chat/completions`. The app sends text only after you click the translate button. In selection translation mode, the selected source text is not duplicated in the translation panel.
+Dependencies: PySide6 6.11.1, Markdown 3.10.3.
 
-Available model options are `deepseek-v4-flash` and `deepseek-v4-pro`. Fast translation uses `thinking=false`, while refined translation uses `thinking=true`. Translation mode is independent from the model selector.
-
-The API Key can be saved locally from `Settings -> DeepSeek API Configuration...`. On Windows, it is protected with DPAPI before being written to the local settings file.
-
-## Run From Source
-
-Double-click `launch.cmd`.
-
-## Installer Build
-
-The installer is located at:
+## Installer (Preview)
 
 ```text
-release\MarkdownViewerSetup.exe
+release-qt\MarkdownViewerQtPreviewSetup.exe
 ```
 
-Double-click it to open the full setup wizard, including welcome page, install location selection, install options, progress page, and finish page.
+SHA-256: `7BB8E550EB48E0F8B2418273DAA07FDBB1F3C5D9A72EDCC4290654CE71FFB64B`
 
-The default install location is:
+The Qt Preview installer uses an independent App ID / ProgID, so it can be installed alongside the archived Tk edition without overwriting it.
 
-```text
-%LOCALAPPDATA%\Programs\Markdown Viewer
-```
+## Project Layout
 
-The setup wizard lets you change the install path and choose whether to create a Start Menu shortcut, create a desktop shortcut, and register `.md`, `.markdown`, `.mdown`, and `.mkd` file associations and context menu entries. The installed build does not require Python to be installed on the user machine.
+- `markdown_viewer_qt.pyw` — Qt application source
+- `installer\installer_ui_qt.py` — Qt Preview installer wizard
+- `dist-qt` — packaged Qt application directory
+- `release-qt` — final setup executable output
+- `Qt版本交接说明.txt` — implementation handoff notes
 
-## Associate Markdown Files
+The former Tkinter implementation has been moved to the sibling folder `E:\CUBE18\markdown viewer-tk-legacy` (Tk source, old installer, file-association scripts, build artifacts) and is archived, no longer maintained.
 
-For the source version, run this command in PowerShell:
+## Roadmap
 
-```powershell
-powershell -ExecutionPolicy Bypass -File ".\register-file-association.ps1"
-```
-
-After registration, `.md`, `.markdown`, `.mdown`, and `.mkd` files can be opened with this viewer.
-
-If Windows has already assigned Markdown files to another default app, double-click behavior may still be protected by the system `UserChoice` setting. The script also adds a context menu item named `用 Markdown Viewer 打开` and registers the app in Windows Default Apps. In that case, choose `Markdown Viewer` from `Settings > Apps > Default apps`.
-
-## Remove File Association
-
-```powershell
-powershell -ExecutionPolicy Bypass -File ".\unregister-file-association.ps1"
-```
-
-Registry entries are written under the current user at `HKCU:\Software\Classes`; administrator privileges are not required.
+Once the Qt Preview feature set is complete, it will replace the Tk edition as the official Markdown Viewer, with the main installer rebuilt.

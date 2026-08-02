@@ -8,8 +8,11 @@ __pycache__/
 # PyInstaller 构建产物
 build/
 dist/
+dist-qt/
 *.spec
 
 # 二进制产物（发布到 GitHub Releases，不入仓库）
 release/
+release-qt/
 installer/app-payload.zip
+installer/qt-preview-payload.zip
