@@ -1,6 +1,19 @@
 # Markdown Viewer
 
-一个不使用 Electron 的 Windows Markdown 桌面查看器。
+一个不使用 Electron 的 Windows Markdown 桌面查看器，内置 DeepSeek 双语翻译。
+
+## 界面预览
+
+![预览与翻译](docs/screenshots/preview.png)
+
+![分屏模式](docs/screenshots/split.png)
+
+## 亮点
+
+- 纯 Python 标准库 + Tkinter，无 Electron——安装包仅 ~23 MB，启动即开
+- 内置 DeepSeek 翻译：选中/全文、快速/精翻，译文与原文双向滚动同步
+- 现代自绘界面：胶囊按钮、iOS 风格开关、渐变翻译按钮、悬浮滚动条
+- 只读预览器定位：源码视图不可误改，专注阅读
 
 ## 功能
 
@@ -68,7 +81,20 @@ powershell -ExecutionPolicy Bypass -File ".\unregister-file-association.ps1"
 
 # Markdown Viewer
 
-A Windows desktop Markdown viewer built without Electron.
+A Windows desktop Markdown viewer built without Electron, with built-in DeepSeek bilingual translation.
+
+## Screenshots
+
+![Preview with translation](docs/screenshots/preview.png)
+
+![Split view](docs/screenshots/split.png)
+
+## Highlights
+
+- Pure Python stdlib + Tkinter, no Electron — the installer is only ~23 MB
+- Built-in DeepSeek translation: selection / full document, fast / refined modes, with bidirectional scroll sync between original and translation
+- Modern self-drawn UI: pill buttons, iOS-style switches, gradient translate button, overlay scrollbars
+- Read-only previewer: the source view cannot be accidentally edited, focus on reading
 
 ## Features
 
