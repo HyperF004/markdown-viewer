@@ -19,7 +19,7 @@ APP_EXE = "MarkdownViewerQtPreview.exe"
 APP_ID = "MarkdownViewerQtPreview"
 PROG_ID = "MarkdownViewerQtPreview.Document"
 PUBLISHER = "HyperF004"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 MARKER_FILE = ".markdown-viewer-install"
 EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
 
@@ -42,8 +42,22 @@ def resource_path(name):
     return base / name
 
 
+def previous_install_dir():
+    """Return the existing Qt Preview location so updates replace it in place."""
+    uninstall_key = rf"Software\Microsoft\Windows\CurrentVersion\Uninstall\{APP_ID}"
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, uninstall_key) as key:
+            value, _ = winreg.QueryValueEx(key, "InstallLocation")
+        install_dir = Path(value)
+        if (install_dir / APP_EXE).exists() or (install_dir / MARKER_FILE).exists():
+            return install_dir
+    except (FileNotFoundError, OSError):
+        pass
+    return None
+
+
 def default_install_dir():
-    return Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Programs" / APP_NAME
+    return previous_install_dir() or Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Programs" / APP_NAME
 
 
 def start_menu_shortcut_path():
@@ -106,7 +120,8 @@ def run_powershell(script):
         creationflags=creationflags,
     )
     if result.returncode != 0:
-        raise RuntimeError((result.stderr or result.stdout or "PowerShell command failed").strip())
+        detail = (result.stderr or result.stdout or "未知 PowerShell 错误").strip()
+        raise RuntimeError(f"PowerShell 操作失败：{detail}")
 
 
 def ps_quote(value):
@@ -129,7 +144,14 @@ $Shortcut.Save()
 
 
 def stop_running_app():
-    script = "Get-Process -Name 'MarkdownViewerQtPreview' -ErrorAction SilentlyContinue | Stop-Process -Force"
+    # Get-Process returns exit code 1 when no instance exists. That is normal for a first install.
+    script = """
+$running = @(Get-Process -Name 'MarkdownViewerQtPreview' -ErrorAction SilentlyContinue)
+if ($running.Count -gt 0) {
+    $running | Stop-Process -Force
+}
+exit 0
+"""
     run_powershell(script)
 
 

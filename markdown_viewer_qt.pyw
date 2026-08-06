@@ -10,10 +10,11 @@ import urllib.request
 from pathlib import Path
 
 import markdown
-from PySide6.QtCore import QThread, Qt, Signal
-from PySide6.QtGui import QAction, QColor, QFont, QIcon, QTextCursor
+from PySide6.QtCore import Property, QEasingCurve, QPropertyAnimation, QThread, Qt, Signal
+from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
+    QAbstractButton,
     QButtonGroup,
     QComboBox,
     QDialog,
@@ -126,6 +127,63 @@ def text_chunks(value, limit=3600):
     return chunks
 
 
+class MacSwitch(QAbstractButton):
+    """A compact macOS-style switch with a green/grey animated track."""
+
+    def __init__(self, checked=True, parent=None):
+        super().__init__(parent)
+        self.setCheckable(True)
+        self.setChecked(checked)
+        self.setFixedSize(44, 26)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip("跟随滚动")
+        self._offset = 1.0 if checked else 0.0
+        self._animation = QPropertyAnimation(self, b"offset", self)
+        self._animation.setDuration(180)
+        self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.toggled.connect(self.animate)
+
+    def get_offset(self):
+        return self._offset
+
+    def set_offset(self, value):
+        self._offset = float(value)
+        self.update()
+
+    offset = Property(float, get_offset, set_offset)
+
+    def animate(self, checked):
+        self._animation.stop()
+        self._animation.setStartValue(self._offset)
+        self._animation.setEndValue(1.0 if checked else 0.0)
+        self._animation.start()
+
+    def paintEvent(self, _event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        track = self.rect().adjusted(1, 2, -1, -2)
+        off = QColor("#D1D1D6")
+        on = QColor("#34C759")
+        color = QColor(
+            round(off.red() + (on.red() - off.red()) * self._offset),
+            round(off.green() + (on.green() - off.green()) * self._offset),
+            round(off.blue() + (on.blue() - off.blue()) * self._offset),
+        )
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        painter.drawRoundedRect(track, track.height() / 2, track.height() / 2)
+        knob_size = track.height() - 4
+        left = track.left() + 2
+        right = track.right() - knob_size - 1
+        knob_x = left + (right - left) * self._offset
+        # A restrained shadow separates the white thumb from the off-state track.
+        painter.setBrush(QColor(0, 0, 0, 22))
+        painter.drawEllipse(int(knob_x), track.top() + 3, knob_size, knob_size)
+        painter.setBrush(QColor("#FFFFFF"))
+        painter.drawEllipse(int(knob_x), track.top() + 2, knob_size, knob_size)
+        painter.end()
+
+
 class TranslationWorker(QThread):
     progress = Signal(int, int)
     completed = Signal(str)
@@ -229,6 +287,7 @@ class MarkdownViewerQt(QMainWindow):
         self.current_path = None
         self.translation_worker = None
         self.syncing = False
+        self.source_width = 0
         self.settings = self.load_settings()
         self.setWindowTitle(f"{APP_NAME} Qt Preview")
         self.setMinimumSize(1040, 660)
@@ -247,7 +306,7 @@ class MarkdownViewerQt(QMainWindow):
         root.setObjectName("root")
         self.setCentralWidget(root)
         outer = QVBoxLayout(root)
-        outer.setContentsMargins(12, 12, 12, 12)
+        outer.setContentsMargins(20, 20, 20, 18)
         outer.setSpacing(0)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setChildrenCollapsible(False)
@@ -268,12 +327,14 @@ class MarkdownViewerQt(QMainWindow):
         content_layout.addWidget(self.status)
 
         self.source = QPlainTextEdit()
+        self.source.setObjectName("sourceEditor")
         self.source.setMinimumWidth(0)
         self.source.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         self.source.setReadOnly(True)
         self.source.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.source.setFont(QFont("Cascadia Mono", 10))
         self.preview = QTextBrowser()
+        self.preview.setObjectName("previewPane")
         self.preview.setMinimumWidth(0)
         self.preview.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         self.preview.setOpenExternalLinks(True)
@@ -290,18 +351,17 @@ class MarkdownViewerQt(QMainWindow):
         side.setContentsMargins(14, 12, 14, 12)
         side.setSpacing(8)
         header = QHBoxLayout()
-        header.addWidget(QLabel("📖 译文"))
+        side_title = QLabel("译文")
+        side_title.setObjectName("sidebarTitle")
+        header.addWidget(side_title)
         self.translation_state = QLabel("未翻译")
         self.translation_state.setObjectName("muted")
         header.addWidget(self.translation_state)
         header.addStretch()
-        header.addWidget(QLabel("🔗 跟随"))
-        self.follow = QToolButton()
-        self.follow.setText("开")
-        self.follow.setCheckable(True)
-        self.follow.setChecked(True)
-        self.follow.setObjectName("switch")
-        self.follow.toggled.connect(lambda on: self.follow.setText("开" if on else "关"))
+        follow_label = QLabel("跟随")
+        follow_label.setObjectName("followLabel")
+        header.addWidget(follow_label)
+        self.follow = MacSwitch(True)
         header.addWidget(self.follow)
         side.addLayout(header)
 
@@ -318,8 +378,8 @@ class MarkdownViewerQt(QMainWindow):
 
         self.quality_group = QButtonGroup(self)
         quality = QHBoxLayout()
-        self.fast_button = self.mode_button("⚡ 快速", True)
-        self.pro_button = self.mode_button("🧠 精翻")
+        self.fast_button = self.mode_button("快速", True)
+        self.pro_button = self.mode_button("精翻")
         self.quality_group.addButton(self.fast_button)
         self.quality_group.addButton(self.pro_button)
         quality.addWidget(self.fast_button)
@@ -332,6 +392,7 @@ class MarkdownViewerQt(QMainWindow):
         self.translate_button.clicked.connect(self.translate_current)
         side.addWidget(self.translate_button)
         line = QFrame()
+        line.setObjectName("divider")
         line.setFrameShape(QFrame.Shape.HLine)
         side.addWidget(line)
         self.progress_label = QLabel("")
@@ -342,6 +403,7 @@ class MarkdownViewerQt(QMainWindow):
         side.addWidget(self.progress_label)
         side.addWidget(self.progress)
         self.translation = QTextBrowser()
+        self.translation.setObjectName("translationPane")
         self.translation.setFont(QFont("Microsoft YaHei UI", 10))
         self.translation.setHtml("<p>选中原文后点击“翻译”，或切换到“全文”。</p>")
         side.addWidget(self.translation, 1)
@@ -360,6 +422,8 @@ class MarkdownViewerQt(QMainWindow):
         button.setCheckable(True)
         button.setChecked(checked)
         button.setObjectName("mode")
+        button.setMinimumHeight(28)
+        button.setMinimumWidth(64)
         return button
 
     def build_menu(self):
@@ -370,8 +434,9 @@ class MarkdownViewerQt(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(QAction("退出", self, shortcut="Alt+F4", triggered=self.close))
         view_menu = self.menuBar().addMenu("视图")
+        self.source_action = QAction("隐藏源码栏", self, triggered=self.toggle_source)
         self.sidebar_action = QAction("隐藏翻译栏", self, triggered=self.toggle_sidebar)
-        view_menu.addAction(self.sidebar_action)
+        view_menu.addActions([self.source_action, self.sidebar_action])
         settings_menu = self.menuBar().addMenu("设置")
         settings_menu.addAction(QAction("DeepSeek API 配置...", self, triggered=self.open_settings))
         tools = self.menuBar().addMenu("工具")
@@ -380,30 +445,49 @@ class MarkdownViewerQt(QMainWindow):
 
     def apply_styles(self):
         self.setStyleSheet(f"""
-            QMainWindow, #root {{ background: {COLORS['app']}; color: {COLORS['text']}; font-family: 'Microsoft YaHei UI', 'Segoe UI'; font-size: 10pt; }}
-            QMenuBar {{ background: {COLORS['panel']}; border-bottom: 1px solid {COLORS['border']}; }}
-            QPlainTextEdit, QTextBrowser {{ background: {COLORS['panel']}; border: 1px solid {COLORS['border']}; padding: 12px; selection-background-color: #BFDBFE; }}
-            #sidebar {{ background: {COLORS['sidebar']}; }}
-            QSplitter::handle {{ background: {COLORS['border']}; }}
-            QSplitter::handle:hover {{ background: {COLORS['hover']}; }}
-            QPushButton {{ border: 1px solid {COLORS['border']}; background: {COLORS['panel']}; padding: 4px 10px; border-radius: 6px; }}
-            QPushButton:hover {{ background: #EFF6FF; border-color: {COLORS['hover']}; }}
-            QPushButton#mode:checked {{ background: {COLORS['brand']}; color: white; border-color: {COLORS['brand']}; font-weight: 600; }}
-            QPushButton#translate {{ min-height: 38px; background: {COLORS['brand']}; color: white; border: none; font-weight: 700; }}
-            QPushButton#translate:hover {{ background: {COLORS['hover']}; }}
-            QToolButton#switch {{ border: none; border-radius: 10px; background: {COLORS['brand']}; color: white; min-width: 32px; min-height: 20px; }}
-            QToolButton#switch:!checked {{ background: #CBD5E1; color: {COLORS['muted']}; }}
-            #muted, #status {{ color: {COLORS['muted']}; }}
-            #status {{ padding: 7px 0; }}
-            QProgressBar {{ border: none; background: #DBEAFE; height: 5px; }}
-            QProgressBar::chunk {{ background: {COLORS['brand']}; }}
-            #dialogTitle {{ font-size: 15pt; font-weight: 700; }}
-            QLineEdit, QComboBox {{ background: white; border: 1px solid {COLORS['border']}; padding: 7px; border-radius: 4px; }}
-            QPushButton#primary {{ background: {COLORS['brand']}; color: white; border: none; padding: 7px 16px; }}
+            QMainWindow, #root {{ background: #F5F5F7; color: #1D1D1F; font-family: 'Segoe UI Variable', 'Microsoft YaHei UI', 'Segoe UI'; font-size: 10pt; }}
+            QMenuBar {{ background: rgba(255,255,255,0.82); border: none; border-bottom: 1px solid #D2D2D7; padding: 3px 8px; }}
+            QMenuBar::item {{ padding: 6px 10px; border-radius: 5px; }}
+            QMenuBar::item:selected {{ background: #E8E8ED; }}
+            QMenu {{ background: #FFFFFF; border: 1px solid #D2D2D7; padding: 5px; }}
+            QMenu::item {{ padding: 7px 26px 7px 12px; border-radius: 5px; }}
+            QMenu::item:selected {{ background: #E8F1FF; color: #0066CC; }}
+            #sourceEditor, #previewPane, #translationPane {{ background: #FFFFFF; border: 1px solid #DADADF; border-radius: 22px; padding: 14px; selection-background-color: #BFD9FF; }}
+            #sidebar {{ background: #ECECF1; border: 1px solid #DEDEE4; border-radius: 28px; }}
+            QSplitter::handle {{ background: transparent; width: 5px; }}
+            QSplitter::handle:hover {{ background: #C7DFFF; }}
+            QSplitter::handle:pressed {{ background: #0A84FF; }}
+            QPushButton {{ border: 1px solid #D2D2D7; background: rgba(255,255,255,0.78); padding: 5px 11px; border-radius: 9px; }}
+            QPushButton:hover {{ background: #FFFFFF; border-color: #B7B7BE; }}
+            QPushButton:pressed {{ background: #E5E5EA; }}
+            QPushButton#mode {{ background: #E2E2E7; border: none; border-radius: 9px; color: #3A3A3C; font-weight: 600; }}
+            QPushButton#mode:hover {{ background: #D7D7DD; }}
+            QPushButton#mode:checked {{ background: #FFFFFF; color: #007AFF; border: 1px solid #D2D2D7; }}
+            QPushButton#translate {{ min-height: 42px; background: #007AFF; color: white; border: none; border-radius: 12px; font-weight: 700; }}
+            QPushButton#translate:hover {{ background: #0A84FF; }}
+            QPushButton#translate:pressed {{ background: #006EDB; }}
+            #sidebarTitle {{ font-size: 12pt; font-weight: 700; color: #1D1D1F; }}
+            #followLabel, #muted, #status {{ color: #6E6E73; }}
+            #status {{ padding: 8px 3px 1px; font-size: 9pt; }}
+            QProgressBar {{ border: none; background: #DDEBFF; border-radius: 3px; height: 6px; }}
+            QProgressBar::chunk {{ background: #34C759; border-radius: 3px; }}
+            #divider {{ border: none; background: #D1D1D6; min-height: 1px; max-height: 1px; }}
+            QScrollBar:vertical {{ background: transparent; width: 10px; margin: 6px 2px; }}
+            QScrollBar::handle:vertical {{ background: rgba(60,60,67,0.28); min-height: 36px; border-radius: 4px; }}
+            QScrollBar::handle:vertical:hover {{ background: rgba(60,60,67,0.46); }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
+            QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px 6px; }}
+            QScrollBar::handle:horizontal {{ background: rgba(60,60,67,0.28); min-width: 36px; border-radius: 4px; }}
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
+            #dialogTitle {{ font-size: 16pt; font-weight: 700; }}
+            QDialog {{ background: #F5F5F7; }}
+            QLineEdit, QComboBox {{ background: #FFFFFF; border: 1px solid #D2D2D7; padding: 8px; border-radius: 7px; }}
+            QLineEdit:focus, QComboBox:focus {{ border: 2px solid #007AFF; }}
+            QPushButton#primary {{ background: #007AFF; color: white; border: none; border-radius: 7px; padding: 8px 17px; }}
         """)
 
     def active_content(self):
-        return self.source
+        return self.source if self.source.isVisible() else self.preview
 
     def sync_scroll(self, source, target, value):
         if self.syncing or not self.follow.isChecked() or not target:
@@ -513,6 +597,19 @@ class MarkdownViewerQt(QMainWindow):
         visible = self.sidebar.isVisible()
         self.sidebar.setVisible(not visible)
         self.sidebar_action.setText("显示翻译栏" if visible else "隐藏翻译栏")
+
+    def toggle_source(self):
+        visible = self.source.isVisible()
+        if visible:
+            self.source_width = self.content_splitter.sizes()[0]
+            self.source.hide()
+            self.source_action.setText("显示源码栏")
+            return
+        self.source.show()
+        total = sum(self.content_splitter.sizes())
+        source_width = self.source_width or max(320, total // 3)
+        self.content_splitter.setSizes([source_width, max(1, total - source_width)])
+        self.source_action.setText("隐藏源码栏")
 
 
 def main():
