@@ -30,4 +30,6 @@ Markdown Viewer Qt Preview 更新日志
 - 当前安装包：release-qt\MarkdownViewerQtPreviewSetup.exe
 - 安装器会识别旧 Qt Preview 的安装目录并原地覆盖，包含此前自定义的安装路径。
 - 修复首次安装时没有旧程序进程却误报“PowerShell 操作失败”的问题。
-- SHA-256：83CB73F80A265F1CCD55A9F4780364DD0AF1B2AEFEF1DA5803329C637FCA22EE
+- 新增可持久化的深色模式，覆盖正文、译文、菜单、设置弹窗、滚动条和进度条；Windows 原生标题栏同步切换。
+- 修复深色模式下菜单栏文字显示为黑色的问题。
+- SHA-256：A4F92394B4C246D68FAAC9F2A62004D63F7058D8E373CDE408277C0ECB50AE9E

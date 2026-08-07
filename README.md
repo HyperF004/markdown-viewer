@@ -13,6 +13,7 @@
 - 选中 / 全文翻译，翻译进度反馈
 - 译文按 Markdown 样式渲染
 - 原文 / 译文滚动联动
+- 可持久化的浅色 / 深色模式（覆盖全部界面元素，Windows 原生标题栏同步切换）
 - 右侧译文栏显示 / 隐藏，源码栏显示 / 隐藏（隐藏后预览区自动扩展，恢复时还原宽度）
 - 苹果风格自绘跟随滚动开关（绿色 / 灰色 + 180ms 缓动动画）
 - 圆角卡片式界面：22px / 28px 圆角、统一留白与配色、分段式模式按钮、细半透明滚动条
@@ -38,7 +39,7 @@
 release-qt\MarkdownViewerQtPreviewSetup.exe
 ```
 
-SHA-256：`83CB73F80A265F1CCD55A9F4780364DD0AF1B2AEFEF1DA5803329C637FCA22EE`
+SHA-256：`A4F92394B4C246D68FAAC9F2A62004D63F7058D8E373CDE408277C0ECB50AE9E`
 
 Qt Preview 安装器使用独立的 App ID / ProgID，可与旧 Tk 版并存安装，互不覆盖。
 
@@ -73,6 +74,7 @@ This is the **preview release** of the Qt migration from the former Tkinter edit
 - Selection / full-document translation with progress feedback
 - Translation result rendered as Markdown
 - Bidirectional scroll sync between original and translation
+- Persistent light / dark mode (applied across the whole UI, syncing the Windows native title bar)
 - Show / hide the right-side translation panel, and show / hide the source pane (the preview expands when hidden and restores its width on return)
 - Apple-style self-drawn follow-scroll switch (green / gray with 180 ms easing animation)
 - Rounded card UI: 22px / 28px corner radii, unified spacing and colors, segmented mode buttons, slim translucent scrollbars
@@ -98,7 +100,7 @@ Dependencies: PySide6 6.11.1, Markdown 3.10.3.
 release-qt\MarkdownViewerQtPreviewSetup.exe
 ```
 
-SHA-256: `83CB73F80A265F1CCD55A9F4780364DD0AF1B2AEFEF1DA5803329C637FCA22EE`
+SHA-256: `A4F92394B4C246D68FAAC9F2A62004D63F7058D8E373CDE408277C0ECB50AE9E`
 
 The Qt Preview installer uses an independent App ID / ProgID, so it can be installed alongside the archived Tk edition without overwriting it.
 

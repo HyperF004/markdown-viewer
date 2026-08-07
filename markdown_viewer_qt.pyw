@@ -138,6 +138,7 @@ class MacSwitch(QAbstractButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip("跟随滚动")
         self._offset = 1.0 if checked else 0.0
+        self._dark_mode = False
         self._animation = QPropertyAnimation(self, b"offset", self)
         self._animation.setDuration(180)
         self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
@@ -158,11 +159,15 @@ class MacSwitch(QAbstractButton):
         self._animation.setEndValue(1.0 if checked else 0.0)
         self._animation.start()
 
+    def set_dark_mode(self, enabled):
+        self._dark_mode = enabled
+        self.update()
+
     def paintEvent(self, _event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         track = self.rect().adjusted(1, 2, -1, -2)
-        off = QColor("#D1D1D6")
+        off = QColor("#3A3A3C" if self._dark_mode else "#D1D1D6")
         on = QColor("#34C759")
         color = QColor(
             round(off.red() + (on.red() - off.red()) * self._offset),
@@ -289,6 +294,7 @@ class MarkdownViewerQt(QMainWindow):
         self.syncing = False
         self.source_width = 0
         self.settings = self.load_settings()
+        self.dark_mode = self.settings.get("theme", "light") == "dark"
         self.setWindowTitle(f"{APP_NAME} Qt Preview")
         self.setMinimumSize(1040, 660)
         self.resize(1320, 820)
@@ -437,6 +443,11 @@ class MarkdownViewerQt(QMainWindow):
         self.source_action = QAction("隐藏源码栏", self, triggered=self.toggle_source)
         self.sidebar_action = QAction("隐藏翻译栏", self, triggered=self.toggle_sidebar)
         view_menu.addActions([self.source_action, self.sidebar_action])
+        view_menu.addSeparator()
+        self.theme_action = QAction("深色模式", self, checkable=True)
+        self.theme_action.setChecked(self.dark_mode)
+        self.theme_action.toggled.connect(self.set_dark_mode)
+        view_menu.addAction(self.theme_action)
         settings_menu = self.menuBar().addMenu("设置")
         settings_menu.addAction(QAction("DeepSeek API 配置...", self, triggered=self.open_settings))
         tools = self.menuBar().addMenu("工具")
@@ -444,47 +455,104 @@ class MarkdownViewerQt(QMainWindow):
         tools.addAction(QAction("复制译文", self, triggered=lambda: QApplication.clipboard().setText(self.translation.toPlainText())))
 
     def apply_styles(self):
+        if self.dark_mode:
+            colors = {
+                "app": "#1C1C1E", "menu": "#2C2C2E", "panel": "#2C2C2E", "sidebar": "#242426",
+                "border": "#3A3A3C", "text": "#F5F5F7", "muted": "#AEAEB2", "menu_hover": "#3A3A3C",
+                "field_hover": "#3A3A3C", "mode": "#3A3A3C", "mode_hover": "#48484A", "mode_checked": "#344B67",
+                "brand": "#0A84FF", "brand_hover": "#409CFF", "brand_pressed": "#006EDB", "progress": "#1D3D62",
+                "success": "#30D158", "scroll": "rgba(235,235,245,0.30)", "scroll_hover": "rgba(235,235,245,0.52)",
+            }
+        else:
+            colors = {
+                "app": "#F5F5F7", "menu": "rgba(255,255,255,0.82)", "panel": "#FFFFFF", "sidebar": "#ECECF1",
+                "border": "#D2D2D7", "text": "#1D1D1F", "muted": "#6E6E73", "menu_hover": "#E8E8ED",
+                "field_hover": "#FFFFFF", "mode": "#E2E2E7", "mode_hover": "#D7D7DD", "mode_checked": "#FFFFFF",
+                "brand": "#007AFF", "brand_hover": "#0A84FF", "brand_pressed": "#006EDB", "progress": "#DDEBFF",
+                "success": "#34C759", "scroll": "rgba(60,60,67,0.28)", "scroll_hover": "rgba(60,60,67,0.46)",
+            }
+        self.follow.set_dark_mode(self.dark_mode)
+        markdown_style = f"""
+            body {{ color: {colors['text']}; background: transparent; font-family: 'Microsoft YaHei UI', 'Segoe UI'; line-height: 1.65; }}
+            a {{ color: {colors['brand']}; }}
+            code {{ background: {colors['mode']}; border-radius: 4px; padding: 2px 4px; }}
+            pre {{ background: {colors['mode']}; border: 1px solid {colors['border']}; border-radius: 8px; padding: 10px; }}
+            blockquote {{ color: {colors['muted']}; border-left: 3px solid {colors['brand']}; margin-left: 0; padding-left: 10px; }}
+            table {{ border-collapse: collapse; }}
+            th, td {{ border: 1px solid {colors['border']}; padding: 6px; }}
+            th {{ background: {colors['mode']}; }}
+        """
+        for browser in (self.preview, self.translation):
+            browser.document().setDefaultStyleSheet(markdown_style)
         self.setStyleSheet(f"""
-            QMainWindow, #root {{ background: #F5F5F7; color: #1D1D1F; font-family: 'Segoe UI Variable', 'Microsoft YaHei UI', 'Segoe UI'; font-size: 10pt; }}
-            QMenuBar {{ background: rgba(255,255,255,0.82); border: none; border-bottom: 1px solid #D2D2D7; padding: 3px 8px; }}
-            QMenuBar::item {{ padding: 6px 10px; border-radius: 5px; }}
-            QMenuBar::item:selected {{ background: #E8E8ED; }}
-            QMenu {{ background: #FFFFFF; border: 1px solid #D2D2D7; padding: 5px; }}
-            QMenu::item {{ padding: 7px 26px 7px 12px; border-radius: 5px; }}
-            QMenu::item:selected {{ background: #E8F1FF; color: #0066CC; }}
-            #sourceEditor, #previewPane, #translationPane {{ background: #FFFFFF; border: 1px solid #DADADF; border-radius: 22px; padding: 14px; selection-background-color: #BFD9FF; }}
-            #sidebar {{ background: #ECECF1; border: 1px solid #DEDEE4; border-radius: 28px; }}
+            QMainWindow, #root {{ background: {colors['app']}; color: {colors['text']}; font-family: 'Segoe UI Variable', 'Microsoft YaHei UI', 'Segoe UI'; font-size: 10pt; }}
+            QMenuBar {{ background: {colors['menu']}; color: {colors['text']}; border: none; border-bottom: 1px solid {colors['border']}; padding: 3px 8px; }}
+            QMenuBar::item {{ color: {colors['text']}; padding: 6px 10px; border-radius: 5px; }}
+            QMenuBar::item:selected {{ background: {colors['menu_hover']}; }}
+            QMenu {{ background: {colors['menu']}; color: {colors['text']}; border: 1px solid {colors['border']}; padding: 5px; }}
+            QMenu::item {{ color: {colors['text']}; padding: 7px 26px 7px 12px; border-radius: 5px; }}
+            QMenu::item:selected {{ background: {colors['mode_checked']}; color: {colors['brand_hover']}; }}
+            #sourceEditor, #previewPane, #translationPane {{ background: {colors['panel']}; color: {colors['text']}; border: 1px solid {colors['border']}; border-radius: 22px; padding: 14px; selection-background-color: #275D9B; }}
+            #sidebar {{ background: {colors['sidebar']}; border: 1px solid {colors['border']}; border-radius: 28px; }}
             QSplitter::handle {{ background: transparent; width: 5px; }}
-            QSplitter::handle:hover {{ background: #C7DFFF; }}
-            QSplitter::handle:pressed {{ background: #0A84FF; }}
-            QPushButton {{ border: 1px solid #D2D2D7; background: rgba(255,255,255,0.78); padding: 5px 11px; border-radius: 9px; }}
-            QPushButton:hover {{ background: #FFFFFF; border-color: #B7B7BE; }}
-            QPushButton:pressed {{ background: #E5E5EA; }}
-            QPushButton#mode {{ background: #E2E2E7; border: none; border-radius: 9px; color: #3A3A3C; font-weight: 600; }}
-            QPushButton#mode:hover {{ background: #D7D7DD; }}
-            QPushButton#mode:checked {{ background: #FFFFFF; color: #007AFF; border: 1px solid #D2D2D7; }}
-            QPushButton#translate {{ min-height: 42px; background: #007AFF; color: white; border: none; border-radius: 12px; font-weight: 700; }}
-            QPushButton#translate:hover {{ background: #0A84FF; }}
-            QPushButton#translate:pressed {{ background: #006EDB; }}
-            #sidebarTitle {{ font-size: 12pt; font-weight: 700; color: #1D1D1F; }}
-            #followLabel, #muted, #status {{ color: #6E6E73; }}
+            QSplitter::handle:hover {{ background: {colors['brand_hover']}; }}
+            QSplitter::handle:pressed {{ background: {colors['brand']}; }}
+            QPushButton {{ border: 1px solid {colors['border']}; background: {colors['panel']}; color: {colors['text']}; padding: 5px 11px; border-radius: 9px; }}
+            QPushButton:hover {{ background: {colors['field_hover']}; border-color: {colors['muted']}; }}
+            QPushButton:pressed {{ background: {colors['mode']}; }}
+            QPushButton#mode {{ background: {colors['mode']}; border: none; border-radius: 9px; color: {colors['text']}; font-weight: 600; }}
+            QPushButton#mode:hover {{ background: {colors['mode_hover']}; }}
+            QPushButton#mode:checked {{ background: {colors['mode_checked']}; color: {colors['brand_hover']}; border: 1px solid {colors['border']}; }}
+            QPushButton#translate {{ min-height: 42px; background: {colors['brand']}; color: white; border: none; border-radius: 12px; font-weight: 700; }}
+            QPushButton#translate:hover {{ background: {colors['brand_hover']}; }}
+            QPushButton#translate:pressed {{ background: {colors['brand_pressed']}; }}
+            #sidebarTitle {{ font-size: 12pt; font-weight: 700; color: {colors['text']}; }}
+            #followLabel, #muted, #status {{ color: {colors['muted']}; }}
             #status {{ padding: 8px 3px 1px; font-size: 9pt; }}
-            QProgressBar {{ border: none; background: #DDEBFF; border-radius: 3px; height: 6px; }}
-            QProgressBar::chunk {{ background: #34C759; border-radius: 3px; }}
-            #divider {{ border: none; background: #D1D1D6; min-height: 1px; max-height: 1px; }}
+            QProgressBar {{ border: none; background: {colors['progress']}; border-radius: 3px; height: 6px; }}
+            QProgressBar::chunk {{ background: {colors['success']}; border-radius: 3px; }}
+            #divider {{ border: none; background: {colors['border']}; min-height: 1px; max-height: 1px; }}
             QScrollBar:vertical {{ background: transparent; width: 10px; margin: 6px 2px; }}
-            QScrollBar::handle:vertical {{ background: rgba(60,60,67,0.28); min-height: 36px; border-radius: 4px; }}
-            QScrollBar::handle:vertical:hover {{ background: rgba(60,60,67,0.46); }}
+            QScrollBar::handle:vertical {{ background: {colors['scroll']}; min-height: 36px; border-radius: 4px; }}
+            QScrollBar::handle:vertical:hover {{ background: {colors['scroll_hover']}; }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
             QScrollBar:horizontal {{ background: transparent; height: 10px; margin: 2px 6px; }}
-            QScrollBar::handle:horizontal {{ background: rgba(60,60,67,0.28); min-width: 36px; border-radius: 4px; }}
+            QScrollBar::handle:horizontal {{ background: {colors['scroll']}; min-width: 36px; border-radius: 4px; }}
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
-            #dialogTitle {{ font-size: 16pt; font-weight: 700; }}
-            QDialog {{ background: #F5F5F7; }}
-            QLineEdit, QComboBox {{ background: #FFFFFF; border: 1px solid #D2D2D7; padding: 8px; border-radius: 7px; }}
-            QLineEdit:focus, QComboBox:focus {{ border: 2px solid #007AFF; }}
-            QPushButton#primary {{ background: #007AFF; color: white; border: none; border-radius: 7px; padding: 8px 17px; }}
+            #dialogTitle {{ font-size: 16pt; font-weight: 700; color: {colors['text']}; }}
+            QDialog {{ background: {colors['app']}; color: {colors['text']}; }}
+            QLineEdit, QComboBox {{ background: {colors['panel']}; color: {colors['text']}; border: 1px solid {colors['border']}; padding: 8px; border-radius: 7px; }}
+            QLineEdit:focus, QComboBox:focus {{ border: 2px solid {colors['brand']}; }}
+            QPushButton#primary {{ background: {colors['brand']}; color: white; border: none; border-radius: 7px; padding: 8px 17px; }}
+            QToolTip {{ background: {colors['menu']}; color: {colors['text']}; border: 1px solid {colors['border']}; padding: 4px; }}
         """)
+        self.apply_window_chrome()
+
+    def apply_window_chrome(self):
+        """Keep the native Windows title bar aligned with the selected theme."""
+        if sys.platform != "win32":
+            return
+        value = ctypes.c_int(1 if self.dark_mode else 0)
+        hwnd = int(self.winId())
+        for attribute in (20, 19):  # 20 is Windows 11; 19 supports early Windows 10 builds.
+            try:
+                result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, attribute, ctypes.byref(value), ctypes.sizeof(value)
+                )
+                if result == 0:
+                    break
+            except (AttributeError, OSError):
+                break
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.apply_window_chrome()
+
+    def set_dark_mode(self, enabled):
+        self.dark_mode = enabled
+        self.settings["theme"] = "dark" if enabled else "light"
+        self.save_settings()
+        self.apply_styles()
 
     def active_content(self):
         return self.source if self.source.isVisible() else self.preview
