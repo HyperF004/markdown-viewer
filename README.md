@@ -49,7 +49,6 @@ Qt Preview 安装器使用独立的 App ID / ProgID，可与旧 Tk 版并存安�
 - `installer\installer_ui_qt.py` — Qt Preview 安装向导
 - `dist-qt` — 打包后的 Qt 应用目录
 - `release-qt` — 最终安装程序输出目录
-- `Qt版本交接说明.txt` — 迁移交接说明
 
 旧 Tkinter 实现已移至同级目录 `E:\CUBE18\markdown viewer-tk-legacy`（含 Tk 源码、旧安装器、注册表关联脚本、构建产物），已归档不再维护。
 
@@ -110,7 +109,6 @@ The Qt Preview installer uses an independent App ID / ProgID, so it can be insta
 - `installer\installer_ui_qt.py` — Qt Preview installer wizard
 - `dist-qt` — packaged Qt application directory
 - `release-qt` — final setup executable output
-- `Qt版本交接说明.txt` — implementation handoff notes
 
 The former Tkinter implementation has been moved to the sibling folder `E:\CUBE18\markdown viewer-tk-legacy` (Tk source, old installer, file-association scripts, build artifacts) and is archived, no longer maintained.
 

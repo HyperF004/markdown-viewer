@@ -16,3 +16,7 @@ release/
 release-qt/
 installer/app-payload.zip
 installer/qt-preview-payload.zip
+
+# 本地交接/工作记录（不入仓库）
+Qt版本交接说明.txt
+界面更新日志.txt
